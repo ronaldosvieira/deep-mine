@@ -64,6 +64,7 @@ def run_episode():
     done = False
     while not done:
         _action = env.action_space.sample()
+        # just a comment
         observation, reward, done, info = env.step(_action)
         print("reward:", reward)
         print("done:", done)
