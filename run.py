@@ -1,7 +1,28 @@
 import marlo
 import os
 import json
+import gym.spaces
+import numpy as np
+from skimage import transform
+from collections import deque
+from PIL import Image
 
+def preprocess_frame(frame):
+    # convert to grayscale
+    frame = np.mean(frame, -1)
+    
+    # normalize pixel values
+    normalized_frame = frame / 255.0
+    
+    # resize down to 84x84
+    preprocessed_frame = transform.resize(normalized_frame, [84, 84])
+
+    # saves resized image for debugging purposes
+    # image = Image.new('L', (84, 84))
+    # image.putdata(preprocessed_frame.flatten() * 255)
+    # image.save("img.png")
+    
+    return preprocessed_frame
 
 def get_join_tokens():
     if marlo.is_grading():
@@ -43,7 +64,6 @@ def get_join_tokens():
                                  })
     return join_tokens
 
-
 def run_episode():
     """
     Single episode run
@@ -63,9 +83,12 @@ def run_episode():
     # Enter game loop
     done = False
     while not done:
+        preprocessed_frame = preprocess_frame(observation)
+        
         _action = env.action_space.sample()
-        # just a comment
+
         observation, reward, done, info = env.step(_action)
+        
         print("reward:", reward)
         print("done:", done)
         print("info", info)
