@@ -126,6 +126,12 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, s
 
     return action, explore_probability
 
+def int_to_one_hot(action):
+    encoding = [0] * len(possible_actions)
+    encoding[action] = 1
+
+    return encoding
+
 def get_join_tokens():
     if marlo.is_grading():
         """
@@ -228,47 +234,45 @@ def run_episode(sess, episode):
 
     state, stacked_frames = stack_frames(stacked_frames, observation, True)
 
-    print("Starting training")
+    print("Training...")
 
-    while True:
+    while not done:
         step += 1
         decay_step += 1
 
+        # chooses action
         action, explore_probability = predict_action(explore_start, 
             explore_stop, decay_rate, decay_step, state, sess)
 
+        # does action
         observation, reward, done, info = env.step(action)
 
+        # saves reward value
         episode_rewards.append(reward)
 
-        if done:
-            env.close()
+        # stacks new frame
+        next_state, stacked_frames = stack_frames(stacked_frames,
+            observation, False)
 
-            return
-        else:
-            next_state, stacked_frames = stack_frames(stacked_frames,
-                observation, False)
+        # adds experience to memory
+        memory.add((state, action, reward, next_state, done))
 
-            memory.add((state, action, reward, next_state, done))
-
-            state = next_state
+        # st+1 is now our current state
+        state = next_state
 
         ### LEARNING PART
-        def ac(a):
-            r = [0] * len(possible_actions)
-            r[a] = 1
-            return r            
         # Obtain random mini-batch from memory
         batch = memory.sample(batch_size)
-        states_mb = np.array([each[0] for each in batch], ndmin=3)
-        actions_mb = np.array([ac(each[1]) for each in batch])
+
+        states_mb = np.array([each[0] for each in batch], ndmin = 3)
+        actions_mb = np.array([int_to_one_hot(each[1]) for each in batch])
         rewards_mb = np.array([each[2] for each in batch]) 
-        next_states_mb = np.array([each[3] for each in batch], ndmin=3)
+        next_states_mb = np.array([each[3] for each in batch], ndmin = 3)
         dones_mb = np.array([each[4] for each in batch])
 
         target_Qs_batch = []
 
-         # Get Q values for next_state 
+        # Get Q values for next_state 
         Qs_next_state = sess.run(DQNetwork.output, 
             feed_dict = {DQNetwork.inputs_: next_states_mb})
 
@@ -300,7 +304,13 @@ def run_episode(sess, episode):
         writer.add_summary(summary, episode)
         writer.flush()
 
-    print("Sum of rewards:", sum(episode_rewards))
+    # Get the total reward of the episode
+    total_reward = np.sum(episode_rewards)
+
+    print('Episode: {}'.format(episode),
+          'Total reward: {}'.format(total_reward),
+          'Training loss: {:.4f}'.format(loss),
+          'Explore P: {:.4f}'.format(explore_probability))
 
     # It is important to do this env.close()
     env.close()
@@ -332,8 +342,6 @@ if __name__ == "__main__":
             sess.run(tf.global_variables_initializer())
 
             for episode in range(total_episodes):
-                print("Episode {}".format(episode))
-
                 run_episode(sess, episode)
 
                 if (episode + 1) % 5 == 0:
