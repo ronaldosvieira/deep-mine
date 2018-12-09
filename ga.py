@@ -37,13 +37,23 @@ class GeneticAlgorithm:
         info.append(population)
         np.save(params['file'], info)
 
+        print('########### GENERATION {} ###########'.format(generation + 1))
+
         while generation < params['G']:
-            for ind in population:
+            for i, ind in enumerate(population):
+                print('########### EVALUATING {}/{} ###########'.format(i + 1, params['N']))
                 ind.evaluate(1)
 
             new_population = []
 
             elite = sorted(population, reverse = True, key = attrgetter('fitness'))
+
+            if 'top_eval' in params:
+                for i, ind in enumerate(population[:params['top_eval'][0]]):
+                    print('########### EVALUATING TOP {}/{} ###########' \
+                        .format(i + 1, params['top_eval'][0]))
+                    ind.evaluate(params['top_eval'][1])
+
             elite = elite[:params['elitism']]
 
             if len(elite) > 0:
@@ -59,6 +69,8 @@ class GeneticAlgorithm:
 
             population = new_population
             generation += 1
+
+            print('########### GENERATION {} ###########'.format(generation + 1))
 
         for ind in population:
             ind.evaluate()

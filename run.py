@@ -155,7 +155,7 @@ class ParameterVector(Individual):
             rewards.append(run_episode(sess, episode))
 
         self.fitness = np.mean(rewards)
-        print(self.fitness)
+        print(self, "got", self.fitness, "fitness!")
 
     def __str__(self):
         return str(self.genotype)
@@ -358,10 +358,10 @@ if __name__ == "__main__":
 
             trainer = GeneticAlgorithm(new_individual, select, crossover, mutation)
 
-            best, info = trainer.run(N = 2, G = 2, elitism = 1)
+            best, info = trainer.run(N = 2, G = 2, elitism = 1, top_eval = (1, 2))
 
-            print(info)
-            print(best)
+            #print(info)
+            print(best.fitness)
         else:
             while True:
                 run_episode(sess, episode)
