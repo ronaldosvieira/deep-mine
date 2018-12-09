@@ -309,29 +309,6 @@ def run_episode(sess, episode):
     # Enter game loop
     done = False
 
-    '''if training:
-        # pre train
-        for i in range(pretrain_length):
-            # If it's the first step
-            if i == 0:
-                # First we need a state
-                state, stacked_frames = stack_frames(stacked_frames, observation, True)
-
-            # Null action
-            observation, reward, done, info = env.step(0)
-
-            # Look done
-            if done:
-                env.close()
-
-                return run_episode(sess, episode)
-            else:
-                next_state = observation
-                next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
-
-                # Our state is now the next_state
-                state = next_state'''
-
     step = 0
     episode_rewards = []
 
@@ -361,11 +338,6 @@ def run_episode(sess, episode):
 
     # Get the total reward of the episode
     total_reward = np.sum(episode_rewards)
-
-    '''print('Episode: {}'.format(episode),
-          'Total reward: {}'.format(total_reward),
-          'Training loss: {:.4f}'.format(loss),
-          'Explore P: {:.4f}'.format(explore_probability))'''
 
     # It is important to do this env.close()
     env.close()
