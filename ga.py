@@ -39,7 +39,7 @@ class GeneticAlgorithm:
 
         new_population = []
 
-        elite = sorted(population, reverse = True, key = attrgetter('fitness'))
+        elite = sort_pop_by_fitness(population)
 
         if 'top_eval' in params:
             for i, ind in enumerate(population[:params['top_eval'][0]]):
@@ -65,6 +65,9 @@ class GeneticAlgorithm:
 
         return new_population
 
+    def sort_pop_by_fitness(self, population):
+        return sorted(population, reverse = True, key = attrgetter('fitness'))
+
     def run(self, **params):
         np.random.seed(params['seed'] if 'seed' in params else None)
         params['file'] = params.get('file', 
@@ -75,17 +78,17 @@ class GeneticAlgorithm:
         generation = 1
 
         while generation <= params['G']:
-            info.append(population)
-            np.save(params['file'], info)
-
             print('########### GENERATION {} ###########'.format(generation))
 
             new_population = self.run_generation(population, params)
 
+            info.append(sort_pop_by_fitness(population))
+            np.save(params['file'], info)
+
             population = new_population
             generation += 1
 
-        info.append(population)
+        info.append(sort_pop_by_fitness(population))
         np.save(params['file'], info)
 
-        return sorted(population, reverse = True, key = attrgetter('fitness'))[0], info
+        return sort_pop_by_fitness(population)[0], info
