@@ -7,10 +7,14 @@ import numpy as np
 import tensorflow as tf
 from skimage import transform
 from collections import deque
+from operator import attrgetter
 from PIL import Image
 from dqn import DQNetwork
+from ga import *
 
-possible_actions = [0, 1, 2, 3, 4]
+training = True
+
+possible_actions = [1, 2, 3, 4]
 
 stack_size = 4
 
@@ -20,12 +24,12 @@ action_size = 5 # move forward/backward, turn left/right
 alpha = 0.0002 # learning rate
 
 # training hyperparameters
-total_episodes = 1
+total_episodes = 50
 batch_size = 64
 
 # exp-exp parameters for epsilon-greedy
-explore_start = 1.0
-explore_stop = 0.01
+explore_start = 1.0 if training else 0.0
+explore_stop = 0.01 if training else 0.0
 decay_rate = 0.0001
 decay_step = 0
 
@@ -36,13 +40,41 @@ gamma = 0.95 # discounting rate
 pretrain_length = batch_size # no of experiences stored in memory at first
 memory_size = 1000000 # max no of experiences
 
-training = True
+sigma = 0.1
+I = 1
+T = 100
+
+max_seed = 1000000
+
+initial_weights = [
+    lambda: np.random.normal(0, np.sqrt(2 / 2320), 
+        size = variables[0].get_shape()),
+    lambda: np.zeros(shape = variables[1].get_shape()),
+    lambda: np.ones(shape = variables[2].get_shape()),
+    lambda: np.zeros(shape = variables[3].get_shape()),
+    lambda: np.random.normal(0, np.sqrt(2 / 1542), 
+        size = variables[4].get_shape()),
+    lambda: np.zeros(shape = variables[5].get_shape()),
+    lambda: np.ones(shape = variables[6].get_shape()),
+    lambda: np.zeros(shape = variables[7].get_shape()),
+    lambda: np.random.normal(0, np.sqrt(2 / 3078), 
+        size = variables[8].get_shape()),
+    lambda: np.zeros(shape = variables[9].get_shape()),
+    lambda: np.ones(shape = variables[10].get_shape()),
+    lambda: np.zeros(shape = variables[11].get_shape()),
+    lambda: np.random.normal(0, np.sqrt(2 / 1664), 
+        size = variables[12].get_shape()),
+    lambda: np.zeros(shape = variables[13].get_shape()),
+    lambda: np.random.normal(0, np.sqrt(2 / 517), 
+        size = variables[14].get_shape()),
+    lambda: np.zeros(shape = variables[15].get_shape())
+]
 
 # Reset the graph
 tf.reset_default_graph()
 
 # Instantiate the DQNetwork
-DQNetwork = DQNetwork(state_size, action_size, alpha)
+dqn = DQNetwork(state_size, action_size, alpha)
 
 class Memory():
     def __init__(self, max_size):
@@ -59,11 +91,65 @@ class Memory():
         
         return [self.buffer[i] for i in index]
 
+total_parameters = 0
+
+for var in tf.trainable_variables():
+    shape = var.get_shape()
+
+    var_parameters = 1
+
+    for dim in shape:
+        var_parameters *= dim.value
+
+    total_parameters += var_parameters
+
 # Instantiate memory
 memory = Memory(max_size = memory_size)
 
 # Saver will help us to save our model
 saver = tf.train.Saver()
+
+class ParameterVector(Individual):
+    def decode(self):
+        np.random.seed(self.genotype[0])
+
+        '''w = np.array([np.random.normal(0, I) for _ in range(total_parameters)])
+
+        for seed in genotype[1:]:
+            np.random.seed(seed)
+            w += sigma * np.array([np.random.normal(0, I) for _ in range(total_parameters)])
+
+        return w'''
+
+    def evaluate(self):
+        weights = self.decode()
+        rewards = []
+
+        for episode in range(1):
+            rewards.append(run_episode(sess, episode))
+
+        self.fitness = np.mean(rewards)
+        print(self, '=', self.fitness)
+
+    def __str__(self):
+        return str(self.genotype)
+
+    def __repr__(self):
+        return str(self)
+
+def new_individual():
+    return ParameterVector([np.random.randint(max_seed)])
+
+def select(pop, amount = 1):
+    top_T = sorted(pop, reverse = False, key = attrgetter('fitness'))[:T]
+    
+    return np.random.choice(top_T, amount)
+
+def mutation(ind):
+    return ParameterVector(ind.genotype + [np.random.randint(max_seed)])
+
+def crossover(ind1, ind2):
+    return ind1
 
 def preprocess_frame(frame):
     # convert to grayscale
@@ -117,8 +203,8 @@ def predict_action(explore_start, explore_stop, decay_rate, decay_step, state, s
         # Get action from DQN (exploit)
 
         # Estimate Q values
-        Qs = sess.run(DQNetwork.output, 
-            feed_dict = {DQNetwork.inputs_: state.reshape((1, *state.shape))})
+        Qs = sess.run(dqn.output, 
+            feed_dict = {dqn.inputs_: state.reshape((1, *state.shape))})
 
         # Take the biggest Q value
         choice = np.argmax(Qs)
@@ -168,7 +254,9 @@ def get_join_tokens():
         client_pool = [('127.0.0.1', 10000)]
         join_tokens = marlo.make('MarLo-FindTheGoal-v0',
                                  params={
-                                    "client_pool": client_pool
+                                    "client_pool": client_pool,
+                                    'tick_length': 25,
+                                    'prioritise_offscreen_rendering': True
                                  })
     return join_tokens
 
@@ -195,54 +283,42 @@ def run_episode(sess, episode):
     # Enter game loop
     done = False
 
-    print("Pre-training...")
+    '''if training:
+        # pre train
+        for i in range(pretrain_length):
+            # If it's the first step
+            if i == 0:
+                # First we need a state
+                state, stacked_frames = stack_frames(stacked_frames, observation, True)
 
-    # pre train
-    for i in range(pretrain_length):
-        # If it's the first step
-        if i == 0:
-            # First we need a state
-            state, stacked_frames = stack_frames(stacked_frames, observation, True)
+            # Null action
+            observation, reward, done, info = env.step(0)
 
-        # Random action
-        action = env.action_space.sample()
-        observation, reward, done, info = env.step(action)
+            # Look done
+            if done:
+                env.close()
 
-        # Look done
-        if done:
-            # Episode is finished
-            next_state = np.zeros(state.shape)
+                return run_episode(sess, episode)
+            else:
+                next_state = observation
+                next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
 
-            # Add experience to memory
-            memory.add((state, action, reward, next_state, done))
-
-            env.close()
-
-            return
-        else:
-            next_state = observation
-            next_state, stacked_frames = stack_frames(stacked_frames, next_state, False)
-
-            # Add experience to memory
-            memory.add((state, action, reward, next_state, done))
-
-            # Our state is now the next_state
-            state = next_state
+                # Our state is now the next_state
+                state = next_state'''
 
     step = 0
     episode_rewards = []
 
     state, stacked_frames = stack_frames(stacked_frames, observation, True)
 
-    print("Training...")
-
     while not done:
         step += 1
-        decay_step += 1
 
         # chooses action
-        action, explore_probability = predict_action(explore_start, 
-            explore_stop, decay_rate, decay_step, state, sess)
+        Qs = sess.run(dqn.output, 
+            feed_dict = {dqn.inputs_: state.reshape((1, *state.shape))})
+        action = np.argmax(Qs)
+        action = possible_actions[int(action)]
 
         # does action
         observation, reward, done, info = env.step(action)
@@ -254,67 +330,21 @@ def run_episode(sess, episode):
         next_state, stacked_frames = stack_frames(stacked_frames,
             observation, False)
 
-        # adds experience to memory
-        memory.add((state, action, reward, next_state, done))
-
         # st+1 is now our current state
         state = next_state
-
-        ### LEARNING PART
-        # Obtain random mini-batch from memory
-        batch = memory.sample(batch_size)
-
-        states_mb = np.array([each[0] for each in batch], ndmin = 3)
-        actions_mb = np.array([int_to_one_hot(each[1]) for each in batch])
-        rewards_mb = np.array([each[2] for each in batch]) 
-        next_states_mb = np.array([each[3] for each in batch], ndmin = 3)
-        dones_mb = np.array([each[4] for each in batch])
-
-        target_Qs_batch = []
-
-        # Get Q values for next_state 
-        Qs_next_state = sess.run(DQNetwork.output, 
-            feed_dict = {DQNetwork.inputs_: next_states_mb})
-
-        # Set Q_target = r if the episode ends at s+1, 
-        # otherwise set Q_target = r + gamma*maxQ(s', a')
-        for i in range(0, len(batch)):
-            terminal = dones_mb[i]
-
-            # If we are in a terminal state, only equals reward
-            if terminal:
-                target_Qs_batch.append(rewards_mb[i])
-                
-            else:
-                target = rewards_mb[i] + gamma * np.max(Qs_next_state[i])
-                target_Qs_batch.append(target)
-                
-
-        targets_mb = np.array([each for each in target_Qs_batch])
-
-        loss, _ = sess.run([DQNetwork.loss, DQNetwork.optimizer],
-                            feed_dict={DQNetwork.inputs_: states_mb,
-                                       DQNetwork.target_Q: targets_mb,
-                                       DQNetwork.actions_: actions_mb})
-
-        # Write TF Summaries
-        summary = sess.run(write_op, feed_dict={DQNetwork.inputs_: states_mb,
-                                           DQNetwork.target_Q: targets_mb,
-                                           DQNetwork.actions_: actions_mb})
-        writer.add_summary(summary, episode)
-        writer.flush()
 
     # Get the total reward of the episode
     total_reward = np.sum(episode_rewards)
 
-    print('Episode: {}'.format(episode),
+    '''print('Episode: {}'.format(episode),
           'Total reward: {}'.format(total_reward),
           'Training loss: {:.4f}'.format(loss),
-          'Explore P: {:.4f}'.format(explore_probability))
+          'Explore P: {:.4f}'.format(explore_probability))'''
 
     # It is important to do this env.close()
     env.close()
 
+    return total_reward
 
 if __name__ == "__main__":
     """
@@ -325,16 +355,32 @@ if __name__ == "__main__":
     """
     with tf.Session() as sess:
         # Load the model
-        saver.restore(sess, "./models/model.ckpt")
+        #saver.restore(sess, "./models/model.ckpt")
 
         if not marlo.is_grading():
-            print("Running single episode...")
+            # Initialize the variables
+            sess.run(tf.global_variables_initializer())
+
+            variables = tf.trainable_variables()
+
+            np.random.seed(1234)
+
+            for weight, variable in zip(initial_weights, variables):
+                sess.run(variable.assign(weight()))
+
+            trainer = GeneticAlgorithm(new_individual, select, crossover, mutation)
+
+            info, best = trainer.run(N = 1, G = 1, elitism = 1)
+
+            print(info)
+
+            '''print("Running single episode...")
 
             # Setup TensorBoard Writer
             writer = tf.summary.FileWriter("tensorboard/DQNetwork/1")
 
             ## Losses
-            tf.summary.scalar("Loss", DQNetwork.loss)
+            tf.summary.scalar("Loss", dqn.loss)
 
             write_op = tf.summary.merge_all()
 
@@ -346,7 +392,7 @@ if __name__ == "__main__":
 
                 if (episode + 1) % 5 == 0:
                     save_path = saver.save(sess, "./models/model.ckpt")
-                    print("Model Saved")
+                    print("Model Saved")'''
         else:
             while True:
                 run_episode(sess, episode)
