@@ -144,14 +144,14 @@ class ParameterVector(Individual):
 
         return var_weights
 
-    def evaluate(self):
+    def evaluate(self, amount = 1):
         var_weights = self.decode()
         rewards = []
 
         for weight, variable in zip(var_weights, variables):
             sess.run(variable.assign(weight))
 
-        for episode in range(1):
+        for episode in range(amount):
             rewards.append(run_episode(sess, episode))
 
         self.fitness = np.mean(rewards)

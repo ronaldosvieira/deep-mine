@@ -1,4 +1,6 @@
 import numpy as np
+import os.path
+import time
 from operator import methodcaller, attrgetter
 
 class Individual:
@@ -21,15 +23,23 @@ class GeneticAlgorithm:
 
         generation = 0
 
-        info = []
+        if 'file' in params and os.path.exists(params['file']):
+            info = list(map(list, np.load(params['load'])))
+            
+            population = info[-1]
+        else:
+            params['file'] = params.get('file', 
+                    'runs/{}.npy'.format(time.strftime("%Y%m%d-%H%M%S")))
+            info = []
 
-        population = [self.ind_gen() for _ in range(params['N'])]
+            population = [self.ind_gen() for _ in range(params['N'])]
+
+        info.append(population)
+        np.save(params['file'], info)
 
         while generation < params['G']:
             for ind in population:
-                ind.evaluate()
-
-            info.append(population)
+                ind.evaluate(1)
 
             new_population = []
 
@@ -47,9 +57,10 @@ class GeneticAlgorithm:
             population = new_population
             generation += 1
 
+            info.append(population)
+            np.save(params['file'], info)
+
         for ind in population:
             ind.evaluate()
-
-        info.append(population)
 
         return sorted(population, reverse = True, key = attrgetter('fitness'))[0], info
