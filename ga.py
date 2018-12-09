@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import numpy as np
 from operator import methodcaller, attrgetter
 
@@ -50,5 +49,7 @@ class GeneticAlgorithm:
 
         for ind in population:
             ind.evaluate()
+
+        info.append(population)
 
         return sorted(population, reverse = True, key = attrgetter('fitness'))[0], info

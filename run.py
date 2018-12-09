@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import marlo
 import os
 import json
@@ -46,54 +47,16 @@ T = 100
 
 max_seed = 1000000
 
-initial_weights = [
-    lambda: np.random.normal(0, np.sqrt(2 / 2320), 
-        size = variables[0].get_shape()),
-    lambda: np.zeros(shape = variables[1].get_shape()),
-    lambda: np.ones(shape = variables[2].get_shape()),
-    lambda: np.zeros(shape = variables[3].get_shape()),
-    lambda: np.random.normal(0, np.sqrt(2 / 1542), 
-        size = variables[4].get_shape()),
-    lambda: np.zeros(shape = variables[5].get_shape()),
-    lambda: np.ones(shape = variables[6].get_shape()),
-    lambda: np.zeros(shape = variables[7].get_shape()),
-    lambda: np.random.normal(0, np.sqrt(2 / 3078), 
-        size = variables[8].get_shape()),
-    lambda: np.zeros(shape = variables[9].get_shape()),
-    lambda: np.ones(shape = variables[10].get_shape()),
-    lambda: np.zeros(shape = variables[11].get_shape()),
-    lambda: np.random.normal(0, np.sqrt(2 / 1664), 
-        size = variables[12].get_shape()),
-    lambda: np.zeros(shape = variables[13].get_shape()),
-    lambda: np.random.normal(0, np.sqrt(2 / 517), 
-        size = variables[14].get_shape()),
-    lambda: np.zeros(shape = variables[15].get_shape())
-]
-
 # Reset the graph
 tf.reset_default_graph()
 
 # Instantiate the DQNetwork
 dqn = DQNetwork(state_size, action_size, alpha)
 
-class Memory():
-    def __init__(self, max_size):
-        self.buffer = deque(maxlen = max_size)
-    
-    def add(self, experience):
-        self.buffer.append(experience)
-    
-    def sample(self, batch_size):
-        buffer_size = len(self.buffer)
-        index = np.random.choice(np.arange(buffer_size),
-                                size = batch_size,
-                                replace = False)
-        
-        return [self.buffer[i] for i in index]
-
 total_parameters = 0
+variables = tf.trainable_variables()
 
-for var in tf.trainable_variables():
+for var in variables:
     shape = var.get_shape()
 
     var_parameters = 1
@@ -103,33 +66,96 @@ for var in tf.trainable_variables():
 
     total_parameters += var_parameters
 
-# Instantiate memory
-memory = Memory(max_size = memory_size)
 
-# Saver will help us to save our model
-saver = tf.train.Saver()
+def gen_initial_weights(seed):
+    np.random.seed(seed)
+
+    w = np.array([
+        np.random.normal(0, np.sqrt(2 / 2320), size = variables[0].get_shape()),
+        np.zeros(shape = variables[1].get_shape()),
+        np.ones(shape = variables[2].get_shape()),
+        np.zeros(shape = variables[3].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 1542), size = variables[4].get_shape()),
+        np.zeros(shape = variables[5].get_shape()),
+        np.ones(shape = variables[6].get_shape()),
+        np.zeros(shape = variables[7].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 3078), size = variables[8].get_shape()),
+        np.zeros(shape = variables[9].get_shape()),
+        np.ones(shape = variables[10].get_shape()),
+        np.zeros(shape = variables[11].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 1664), size = variables[12].get_shape()),
+        np.zeros(shape = variables[13].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 517), size = variables[14].get_shape()),
+        np.zeros(shape = variables[15].get_shape())
+    ])
+
+    np.random.seed(None)
+
+    return w
+
+def gen_weights(seed):
+    np.random.seed(seed)
+
+    w = np.array([
+        np.random.normal(0, np.sqrt(2 / 2320), 
+            size = variables[0].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 2320), 
+            size = variables[1].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 2320), 
+            size = variables[2].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 2320), 
+            size = variables[3].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 1542), 
+            size = variables[4].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 1542), 
+            size = variables[5].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 1542), 
+            size = variables[6].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 1542), 
+            size = variables[7].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 3078), 
+            size = variables[8].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 3078), 
+            size = variables[9].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 3078), 
+            size = variables[10].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 3078), 
+            size = variables[11].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 1664), 
+            size = variables[12].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 1664), 
+            size = variables[13].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 517), 
+            size = variables[14].get_shape()),
+        np.random.normal(0, np.sqrt(2 / 517), 
+            size = variables[15].get_shape())
+    ])
+
+    np.random.seed(None)
+
+    return w
 
 class ParameterVector(Individual):
     def decode(self):
-        np.random.seed(self.genotype[0])
+        var_weights = gen_initial_weights(self.genotype[0])
 
-        '''w = np.array([np.random.normal(0, I) for _ in range(total_parameters)])
+        for seed in self.genotype[1:]:
+            var_weights += sigma * gen_weights(seed)
 
-        for seed in genotype[1:]:
-            np.random.seed(seed)
-            w += sigma * np.array([np.random.normal(0, I) for _ in range(total_parameters)])
-
-        return w'''
+        return var_weights
 
     def evaluate(self):
-        weights = self.decode()
+        var_weights = self.decode()
         rewards = []
+
+        for weight, variable in zip(var_weights, variables):
+            sess.run(variable.assign(weight))
 
         for episode in range(1):
             rewards.append(run_episode(sess, episode))
 
         self.fitness = np.mean(rewards)
-        print(self, '=', self.fitness)
+        print(self.fitness)
 
     def __str__(self):
         return str(self.genotype)
@@ -256,7 +282,7 @@ def get_join_tokens():
                                  params={
                                     "client_pool": client_pool,
                                     'tick_length': 25,
-                                    'prioritise_offscreen_rendering': True
+                                    'prioritise_offscreen_rendering': False
                                  })
     return join_tokens
 
@@ -354,45 +380,16 @@ if __name__ == "__main__":
         join_tokens.
     """
     with tf.Session() as sess:
-        # Load the model
-        #saver.restore(sess, "./models/model.ckpt")
-
         if not marlo.is_grading():
             # Initialize the variables
             sess.run(tf.global_variables_initializer())
 
-            variables = tf.trainable_variables()
-
-            np.random.seed(1234)
-
-            for weight, variable in zip(initial_weights, variables):
-                sess.run(variable.assign(weight()))
-
             trainer = GeneticAlgorithm(new_individual, select, crossover, mutation)
 
-            info, best = trainer.run(N = 1, G = 1, elitism = 1)
+            best, info = trainer.run(N = 2, G = 2, elitism = 1)
 
             print(info)
-
-            '''print("Running single episode...")
-
-            # Setup TensorBoard Writer
-            writer = tf.summary.FileWriter("tensorboard/DQNetwork/1")
-
-            ## Losses
-            tf.summary.scalar("Loss", dqn.loss)
-
-            write_op = tf.summary.merge_all()
-
-            # Initialize the variables
-            sess.run(tf.global_variables_initializer())
-
-            for episode in range(total_episodes):
-                run_episode(sess, episode)
-
-                if (episode + 1) % 5 == 0:
-                    save_path = saver.save(sess, "./models/model.ckpt")
-                    print("Model Saved")'''
+            print(best)
         else:
             while True:
                 run_episode(sess, episode)
