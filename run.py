@@ -154,8 +154,7 @@ class ParameterVector(Individual):
         for episode in range(amount):
             rewards.append(run_episode(sess, episode))
 
-        self.fitness = np.mean(rewards)
-        print(self, "got", self.fitness, "fitness!")
+        return np.mean(rewards)
 
     def __str__(self):
         return str(self.genotype)

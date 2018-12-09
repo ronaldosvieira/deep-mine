@@ -42,7 +42,8 @@ class GeneticAlgorithm:
         while generation < params['G']:
             for i, ind in enumerate(population):
                 print('########### EVALUATING {}/{} ###########'.format(i + 1, params['N']))
-                ind.evaluate(1)
+                ind.fitness = ind.evaluate(1)
+                print(ind, "got", ind.fitness, "fitness!")
 
             new_population = []
 
@@ -52,7 +53,8 @@ class GeneticAlgorithm:
                 for i, ind in enumerate(population[:params['top_eval'][0]]):
                     print('########### EVALUATING TOP {}/{} ###########' \
                         .format(i + 1, params['top_eval'][0]))
-                    ind.evaluate(params['top_eval'][1])
+                    ind.fitness = ind.evaluate(params['top_eval'][1])
+                    print(ind, "got", ind.fitness, "fitness!")
 
             elite = elite[:params['elitism']]
 
