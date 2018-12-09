@@ -54,13 +54,16 @@ class GeneticAlgorithm:
 
                 new_population.append(self.mutate(chosen_ind))
 
-            population = new_population
-            generation += 1
-
             info.append(population)
             np.save(params['file'], info)
 
+            population = new_population
+            generation += 1
+
         for ind in population:
             ind.evaluate()
+
+        info.append(population)
+        np.save(params['file'], info)
 
         return sorted(population, reverse = True, key = attrgetter('fitness'))[0], info

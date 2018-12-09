@@ -282,7 +282,7 @@ def get_join_tokens():
                                  params={
                                     "client_pool": client_pool,
                                     'tick_length': 25,
-                                    'prioritise_offscreen_rendering': False
+                                    'prioritise_offscreen_rendering': True
                                  })
     return join_tokens
 
