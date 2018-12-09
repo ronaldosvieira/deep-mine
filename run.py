@@ -357,7 +357,8 @@ if __name__ == "__main__":
 
             trainer = GeneticAlgorithm(new_individual, select, crossover, mutation)
 
-            best, info = trainer.run(N = 2, G = 2, elitism = 1, top_eval = (1, 2))
+            best, info = trainer.run(N = 2, G = 2, elitism = 1, 
+                eval = 1, top_eval = (1, 1))
 
             #print(info)
             print(best.fitness)

@@ -18,64 +18,72 @@ class GeneticAlgorithm:
         self.crossover = crossover
         self.mutate = mutate
 
-    def run(self, **params):
-        np.random.seed(params['seed'] if 'seed' in params else None)
-
-        generation = 0
-
+    def init_population(self, params):
         if 'file' in params and os.path.exists(params['file']):
             info = list(map(list, np.load(params['load'])))
             
             population = info[-1]
         else:
-            params['file'] = params.get('file', 
-                    'runs/{}.npy'.format(time.strftime("%Y%m%d-%H%M%S")))
             info = []
 
             population = [self.ind_gen() for _ in range(params['N'])]
 
-        info.append(population)
-        np.save(params['file'], info)
+        return population, info
 
-        print('########### GENERATION {} ###########'.format(generation + 1))
-
-        while generation < params['G']:
-            for i, ind in enumerate(population):
+    def run_generation(self, population, params):
+        for i, ind in enumerate(population):
+            if ind.fitness == None:
                 print('########### EVALUATING {}/{} ###########'.format(i + 1, params['N']))
-                ind.fitness = ind.evaluate(1)
+                ind.fitness = ind.evaluate(params.get('eval', 1))
                 print(ind, "got", ind.fitness, "fitness!")
 
-            new_population = []
+        new_population = []
 
-            elite = sorted(population, reverse = True, key = attrgetter('fitness'))
+        elite = sorted(population, reverse = True, key = attrgetter('fitness'))
 
-            if 'top_eval' in params:
-                for i, ind in enumerate(population[:params['top_eval'][0]]):
-                    print('########### EVALUATING TOP {}/{} ###########' \
-                        .format(i + 1, params['top_eval'][0]))
-                    ind.fitness = ind.evaluate(params['top_eval'][1])
-                    print(ind, "got", ind.fitness, "fitness!")
+        if 'top_eval' in params:
+            for i, ind in enumerate(population[:params['top_eval'][0]]):
+                print('########### EVALUATING TOP {}/{} ###########' \
+                    .format(i + 1, params['top_eval'][0]))
+                ind.fitness = ind.evaluate(params['top_eval'][1])
+                print(ind, "got", ind.fitness, "fitness!")
 
-            elite = elite[:params['elitism']]
+        elite = elite[:params['elitism']]
 
-            if len(elite) > 0:
-                new_population.extend(elite)
+        if len(elite) > 0:
+            new_population.extend(elite)
 
-            while len(new_population) < params['N']:
-                chosen_ind = self.select(population, 1)[0]
+        while len(new_population) < params['N']:
+            chosen_ind = self.select(population, 1)[0]
 
-                new_population.append(self.mutate(chosen_ind))
+            new_population.append(self.mutate(chosen_ind))
 
+        for i, ind in enumerate(new_population):
+            print('########### EVALUATING {}/{} ###########'.format(i + 1, params['N']))
+            ind.fitness = ind.evaluate(1)
+            print(ind, "got", ind.fitness, "fitness!")
+
+        return new_population
+
+    def run(self, **params):
+        np.random.seed(params['seed'] if 'seed' in params else None)
+        params['file'] = params.get('file', 
+                    'runs/{}.npy'.format(time.strftime("%Y%m%d-%H%M%S")))
+
+        population, info = self.init_population(params)
+
+        generation = 1
+
+        while generation <= params['G']:
             info.append(population)
             np.save(params['file'], info)
 
+            print('########### GENERATION {} ###########'.format(generation))
+
+            new_population = self.run_generation(population, params)
+
             population = new_population
             generation += 1
-
-            print('########### GENERATION {} ###########'.format(generation + 1))
-
-        for ind in population:
-            ind.evaluate()
 
         info.append(population)
         np.save(params['file'], info)
