@@ -39,7 +39,7 @@ class GeneticAlgorithm:
 
         new_population = []
 
-        elite = sort_pop_by_fitness(population)
+        elite = self.sort_pop_by_fitness(population)
 
         if 'top_eval' in params:
             for i, ind in enumerate(population[:params['top_eval'][0]]):
@@ -82,13 +82,13 @@ class GeneticAlgorithm:
 
             new_population = self.run_generation(population, params)
 
-            info.append(sort_pop_by_fitness(population))
+            info.append(self.sort_pop_by_fitness(population))
             np.save(params['file'], info)
 
             population = new_population
             generation += 1
 
-        info.append(sort_pop_by_fitness(population))
+        info.append(self.sort_pop_by_fitness(population))
         np.save(params['file'], info)
 
-        return sort_pop_by_fitness(population)[0], info
+        return self.sort_pop_by_fitness(population)[0], info

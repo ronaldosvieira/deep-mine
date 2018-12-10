@@ -42,8 +42,7 @@ pretrain_length = batch_size # no of experiences stored in memory at first
 memory_size = 1000000 # max no of experiences
 
 sigma = 0.1
-I = 1
-T = 100
+T = 5
 
 max_seed = 1000000
 
@@ -357,8 +356,8 @@ if __name__ == "__main__":
 
             trainer = GeneticAlgorithm(new_individual, select, crossover, mutation)
 
-            best, info = trainer.run(N = 2, G = 2, elitism = 1, 
-                eval = 1, top_eval = (1, 1))
+            best, info = trainer.run(N = 10, G = 10, elitism = 1, 
+                eval = 1, top_eval = (5, 4), file = 'runs/first.npy')
 
             #print(info)
             print(best.fitness)
