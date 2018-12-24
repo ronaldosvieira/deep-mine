@@ -1,3 +1,3 @@
 # deep-mine
-Playing Minecraft with a Deep Q-Network
+Playing Minecraft with deep neuroevolution
 
